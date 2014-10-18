@@ -11,19 +11,24 @@ import io.netty.handler.logging.LoggingHandler;
 public final class HttpServer {
     private int port;
 
-    public int getPort() {
-        return port;
-    }
+    public void run() throws Exception {
+        // Configure the server.
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        try {
+            ServerBootstrap b = new ServerBootstrap();
+            b.group(bossGroup, workerGroup)
+                    .channel(NioServerSocketChannel.class)
+                    .handler(new LoggingHandler(LogLevel.INFO))
+                    .childHandler(new HttpServerInitializer());
 
-    public void setPort(int port) {
-        this.port = port;
-    }
-
-    public HttpServer() {
-    }
-
-    public HttpServer(int port) {
-        this.port = port;
+            // Bind and start to accept incoming connections.
+            Channel ch = b.bind(port).sync().channel();
+            ch.closeFuture().sync();
+        } finally {
+            bossGroup.shutdownGracefully();
+            workerGroup.shutdownGracefully();
+        }
     }
 
     public static void main(String[] args) throws Exception {
@@ -36,23 +41,17 @@ public final class HttpServer {
         new HttpServer(port).run();
     }
 
-    public void run() throws Exception {
-        // Configure the server.
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        try {
-            ServerBootstrap b = new ServerBootstrap();
-            b.group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .handler(new LoggingHandler(LogLevel.INFO))
-                    .childHandler(new HttpServerInitializer());
+    public HttpServer() { }
 
-            Channel ch = b.bind(port).sync().channel();
-            ch.closeFuture().sync();
-        } finally {
-            bossGroup.shutdownGracefully();
-            workerGroup.shutdownGracefully();
-        }
+    public HttpServer(int port) {
+        this.port = port;
     }
 
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
 }
