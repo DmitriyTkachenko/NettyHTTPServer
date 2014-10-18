@@ -9,8 +9,8 @@ import io.netty.handler.codec.http.HttpResponseEncoder;
 
 public class HttpServerInitializer extends ChannelInitializer<SocketChannel> {
     @Override
-    protected void initChannel(SocketChannel socketChannel) throws Exception {
-        ChannelPipeline cp = socketChannel.pipeline();
+    protected void initChannel(SocketChannel sc) throws Exception {
+        ChannelPipeline cp = sc.pipeline();
         cp.addLast(new HttpRequestDecoder());
         cp.addLast(new HttpResponseEncoder());
         cp.addLast(new HttpContentCompressor());
