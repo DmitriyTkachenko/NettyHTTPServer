@@ -7,6 +7,8 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 
+import java.net.InetSocketAddress;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -15,6 +17,13 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     private HttpRequest request;
     /* Buffer that stores the response content */
     private final StringBuilder responseBuffer = new StringBuilder();
+    private final HttpServerStatistics statistics = HttpServerStatistics.INSTANCE;
+
+    @Override
+    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+        super.channelRegistered(ctx);
+        statistics.addChannel(ctx.channel());
+    }
 
     class UrlMapper {
         private HttpMethod method;
@@ -31,6 +40,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         }
 
         public void callAppropriateMethod() {
+
             if (method != HttpMethod.GET) {
                 send501NotImplemented(ctx);
                 return;
@@ -40,6 +50,12 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
                 /* Show "hello" page at http://domain/hello or http://domain/hello/ */
                 if (pathComponents[0].equals("hello") && params.size() == 0) {
                     serveHelloPage(ctx);
+                    return;
+                }
+
+                /* Show "status" page at http://domain/status or http://domain/status/ */
+                if (pathComponents[0].equals("status") && params.size() == 0) {
+                    serveStatusPage(ctx);
                     return;
                 }
 
@@ -59,6 +75,9 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
         ctx.flush();
+        statistics.incrementNumberOfRequests();
+        statistics.registerRequestFromIp(((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress().replaceFirst("^/", ""),
+                LocalDateTime.now());
     }
 
     private void writeResponse(HttpObject currentObj, ChannelHandlerContext ctx) {
@@ -101,6 +120,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
 
             new UrlMapper(ctx).callAppropriateMethod();
         }
+
     }
 
     private void send100Continue(ChannelHandlerContext ctx) {
@@ -113,9 +133,10 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
-    private static void sendRedirect(ChannelHandlerContext ctx, String newUri) {
+    private void sendRedirect(ChannelHandlerContext ctx, String destinationUri) {
         FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.FOUND);
-        response.headers().set(HttpHeaders.Names.LOCATION, "http://" + newUri);
+        response.headers().set(HttpHeaders.Names.LOCATION, "http://" + destinationUri);
+        statistics.registerRedirect(destinationUri);
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
@@ -139,5 +160,16 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         responseBuffer.setLength(0);
         responseBuffer.append(htmlCreator.getHtml());
         ctx.executor().schedule(() -> writeResponse(request, ctx), 5, TimeUnit.SECONDS);
+    }
+
+    private void serveStatusPage(ChannelHandlerContext ctx) {
+        HtmlCreator htmlCreator = new HtmlCreator();
+        htmlCreator.setTitle("Statistics");
+        htmlCreator.setH1("Statistics");
+        htmlCreator.addParagraph("Number of connections: " + statistics.getConnectionCount());
+        htmlCreator.addParagraph("Number of requests: " + statistics.getNumberOfRequests());
+        responseBuffer.setLength(0);
+        responseBuffer.append(htmlCreator.getHtml());
+        writeResponse(request, ctx);
     }
 }

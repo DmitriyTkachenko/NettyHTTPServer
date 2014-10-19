@@ -19,7 +19,7 @@ public final class HttpServer {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .handler(new LoggingHandler(LogLevel.INFO))
+//                    .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new HttpServerInitializer());
 
             // Bind and start to accept incoming connections.
