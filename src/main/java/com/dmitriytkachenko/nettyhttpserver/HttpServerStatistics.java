@@ -5,16 +5,23 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.javatuples.Pair;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-public enum HttpServerStatistics {
+/* One pipeline per connection. Different pipelines can be run in different threads from worker thread pool.
+* Because of that, implementation of this class is thread-safe.
+* */
+public enum HttpServerStatistics implements Serializable {
     INSTANCE;
 
     private AtomicLong numberOfRequests = new AtomicLong(0);
     private ConcurrentHashMap<String, Pair<Long, LocalDateTime>> ipRequests = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, Long> redirects = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Long, ConnectionInfo> connections = new ConcurrentHashMap<>();
+
+    /* Holds references to open channels (they remove themselves when they are closed). */
     private DefaultChannelGroup channels  = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
     public void incrementNumberOfRequests() {
@@ -53,4 +60,20 @@ public enum HttpServerStatistics {
         return channels.size();
     }
 
+    public ConnectionInfo getConnectionInfoForId(Long id) {
+        System.err.println("Connections: " + connections.size());
+        return connections.get(id);
+    }
+
+    public void addConnectionInfo(ConnectionInfo ci) {
+        connections.put(ci.getConnectionId(), ci);
+        System.err.println("ConnectionInfo added.");
+        System.err.println("Connections: " + connections.size());
+    }
+
+    public void setUriForConnectionInfoWithId(String uri, Long id) {
+        connections.get(id).setUri(uri);
+        System.err.println("Uri for connectionInfo set.");
+        System.err.println("Connections: " + connections.size());
+    }
 }

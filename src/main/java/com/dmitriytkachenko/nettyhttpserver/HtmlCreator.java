@@ -10,17 +10,17 @@ public class HtmlCreator {
     }
 
     public void setTitle(String title) {
-        html.append("<title>" + title + "</title>");
+        html.append("<title>").append(title).append("</title>");
     }
 
     public void setH1(String heading) {
         html.append("</head>");
         html.append("<body>");
-        html.append("<h1>" + heading + "</h1>");
+        html.append("<h1>").append(heading).append("</h1>");
     }
 
     public void addParagraph(String paragraph) {
-        html.append("<p>" + paragraph + "</p>");
+        html.append("<p>").append(paragraph).append("</p>");
     }
 
     public String getHtml() {

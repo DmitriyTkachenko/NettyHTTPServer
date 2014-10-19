@@ -1,6 +1,7 @@
 package com.dmitriytkachenko.nettyhttpserver;
 
 import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -18,6 +19,11 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     /* Buffer that stores the response content */
     private final StringBuilder responseBuffer = new StringBuilder();
     private final HttpServerStatistics statistics = HttpServerStatistics.INSTANCE;
+    private final long connectionId;
+
+    public HttpServerHandler(long connectionId) {
+        this.connectionId = connectionId;
+    }
 
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
@@ -76,8 +82,12 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     public void channelReadComplete(ChannelHandlerContext ctx) {
         ctx.flush();
         statistics.incrementNumberOfRequests();
-        statistics.registerRequestFromIp(((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress().replaceFirst("^/", ""),
-                LocalDateTime.now());
+        statistics.registerRequestFromIp(getIpFromChannel(ctx.channel()), LocalDateTime.now());
+        statistics.setUriForConnectionInfoWithId(request.getUri(), connectionId);
+    }
+
+    public static String getIpFromChannel(Channel channel) {
+        return ((InetSocketAddress) channel.remoteAddress()).getAddress().getHostAddress().replaceFirst("^/", "");
     }
 
     private void writeResponse(HttpObject currentObj, ChannelHandlerContext ctx) {
@@ -166,10 +176,12 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         HtmlCreator htmlCreator = new HtmlCreator();
         htmlCreator.setTitle("Statistics");
         htmlCreator.setH1("Statistics");
-        htmlCreator.addParagraph("Number of connections: " + statistics.getConnectionCount());
-        htmlCreator.addParagraph("Number of requests: " + statistics.getNumberOfRequests());
+        htmlCreator.addParagraph("Open connections: " + statistics.getConnectionCount());
+        htmlCreator.addParagraph("Total requests: " + statistics.getNumberOfRequests());
+        htmlCreator.addParagraph("Unique requests: " + statistics.getNumberOfUniqueRequests());
         responseBuffer.setLength(0);
         responseBuffer.append(htmlCreator.getHtml());
         writeResponse(request, ctx);
     }
+
 }
