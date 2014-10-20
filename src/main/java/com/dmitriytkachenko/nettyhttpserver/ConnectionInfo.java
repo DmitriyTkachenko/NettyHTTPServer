@@ -9,7 +9,8 @@ import java.util.Set;
 /* One instance of this class per pipeline.
 Netty guarantees that a given pipeline instance is always called back from the same worker thread
 (unless there are executors in pipeline).
-So this class does not have to be thread-safe.
+However, this class is accessed by HttpServerStatistics to produce info for HttpServerHandler,
+which can cause ConcurrentModificationException. So, this class is made thread-safe.
 */
 public class ConnectionInfo implements Serializable {
     private static long count = 0;
@@ -31,7 +32,7 @@ public class ConnectionInfo implements Serializable {
     }
 
     /* Get comma-separated URIs */
-    public String getUrisAsString() {
+    public synchronized String getUrisAsString() {
         StringBuilder sb = new StringBuilder();
         uris.forEach((uri) -> sb.append(uri).append(", "));
         if (sb.length() > 1) {
@@ -40,7 +41,7 @@ public class ConnectionInfo implements Serializable {
         return sb.toString();
     }
 
-    public double getSpeed() {
+    public synchronized double getSpeed() {
         double connectionDuration = ChronoUnit.MILLIS.between(established, closed);
         connectionDuration /= 1000; // to seconds
 
@@ -48,57 +49,57 @@ public class ConnectionInfo implements Serializable {
         return Math.round((((double)bytesSent + (double)bytesReceived) / connectionDuration) * 1000.0) / 1000.0;
     }
 
-    public long getConnectionId() {
+    public synchronized long getConnectionId() {
         return connectionId;
     }
 
-    public long getBytesReceived() {
+    public synchronized long getBytesReceived() {
         return bytesReceived;
     }
 
-    public void setBytesReceived(long bytesReceived) {
+    public synchronized void setBytesReceived(long bytesReceived) {
         this.bytesReceived = bytesReceived;
     }
 
-    public LocalDateTime getEstablished() {
+    public synchronized LocalDateTime getEstablished() {
         return established;
     }
 
-    public void setEstablished(LocalDateTime established) {
+    public synchronized void setEstablished(LocalDateTime established) {
         this.established = established;
     }
 
-    public LocalDateTime getClosed() {
+    public synchronized LocalDateTime getClosed() {
         return closed;
     }
 
-    public void setClosed(LocalDateTime closed) {
+    public synchronized void setClosed(LocalDateTime closed) {
         this.closed = closed;
     }
 
-    public String getIp() {
+    public synchronized String getIp() {
         return ip;
     }
 
-    public void setIp(String ip) {
+    public synchronized void setIp(String ip) {
         this.ip = ip;
     }
 
-    public Set<String> getUris() {
+    public synchronized Set<String> getUris() {
         return uris;
     }
 
-    public void addUri(String uri) {
+    public synchronized void addUri(String uri) {
         if (uri != null) {
             uris.add(uri);
         }
     }
 
-    public long getBytesSent() {
+    public synchronized long getBytesSent() {
         return bytesSent;
     }
 
-    public void setBytesSent(long bytesSent) {
+    public synchronized void setBytesSent(long bytesSent) {
         this.bytesSent = bytesSent;
     }
 
