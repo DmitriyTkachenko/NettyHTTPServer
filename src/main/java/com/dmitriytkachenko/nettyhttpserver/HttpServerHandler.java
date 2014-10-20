@@ -10,6 +10,8 @@ import io.netty.util.CharsetUtil;
 
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -19,10 +21,10 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     /* Buffer that stores the response content */
     private final StringBuilder responseBuffer = new StringBuilder();
     private final HttpServerStatistics statistics = HttpServerStatistics.INSTANCE;
-    private final long connectionId;
+    private final ConnectionInfo ci;
 
-    public HttpServerHandler(long connectionId) {
-        this.connectionId = connectionId;
+    public HttpServerHandler(ConnectionInfo ci) {
+        this.ci = ci;
     }
 
     @Override
@@ -81,13 +83,8 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
         ctx.flush();
-        statistics.incrementNumberOfRequests();
-        statistics.registerRequestFromIp(getIpFromChannel(ctx.channel()), LocalDateTime.now());
-        statistics.setUriForConnectionInfoWithId(request.getUri(), connectionId);
-    }
-
-    public static String getIpFromChannel(Channel channel) {
-        return ((InetSocketAddress) channel.remoteAddress()).getAddress().getHostAddress().replaceFirst("^/", "");
+        statistics.registerRequestFromIp(HttpServerStatistics.getIpFromChannel(ctx.channel()), LocalDateTime.now());
+        ci.addUri(request.getUri());
     }
 
     private void writeResponse(HttpObject currentObj, ChannelHandlerContext ctx) {
@@ -169,16 +166,34 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         htmlCreator.setH1("Hello World!");
         responseBuffer.setLength(0);
         responseBuffer.append(htmlCreator.getHtml());
-        ctx.executor().schedule(() -> writeResponse(request, ctx), 5, TimeUnit.SECONDS);
+
+        ctx.executor().schedule(() -> writeResponse(request, ctx), 10, TimeUnit.SECONDS);
     }
 
     private void serveStatusPage(ChannelHandlerContext ctx) {
         HtmlCreator htmlCreator = new HtmlCreator();
         htmlCreator.setTitle("Statistics");
         htmlCreator.setH1("Statistics");
-        htmlCreator.addParagraph("Open connections: " + statistics.getConnectionCount());
         htmlCreator.addParagraph("Total requests: " + statistics.getNumberOfRequests());
         htmlCreator.addParagraph("Unique requests: " + statistics.getNumberOfUniqueRequests());
+        htmlCreator.addParagraph("Open connections: " + statistics.getConnectionCount());
+
+        List<String> requestsTableHeaders = Arrays.asList("IP", "Requests", "Date and time of last request");
+        htmlCreator.addTableWithHeaders(requestsTableHeaders);
+        statistics.getIpRequestsAsStrings().forEach(htmlCreator::addRowToTable);
+        htmlCreator.endTable();
+
+        List<String> redirectsTableHeaders = Arrays.asList("Destination URL", "Number of redirects");
+        htmlCreator.addTableWithHeaders(redirectsTableHeaders);
+        statistics.getRedirectsAsStrings().forEach(htmlCreator::addRowToTable);
+        htmlCreator.endTable();
+
+        List<String> connectionsTableHeaders = Arrays.asList("IP", "URIs", "Established", "Closed",
+                "Sent (bytes)", "Received (bytes)", "Speed (bytes/sec)");
+        htmlCreator.addTableWithHeaders(connectionsTableHeaders);
+        statistics.getConnectionsAsStrings().forEach(htmlCreator::addRowToTable);
+        htmlCreator.endTable();
+
         responseBuffer.setLength(0);
         responseBuffer.append(htmlCreator.getHtml());
         writeResponse(request, ctx);
