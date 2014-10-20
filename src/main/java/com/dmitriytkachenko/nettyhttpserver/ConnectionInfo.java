@@ -3,7 +3,6 @@ package com.dmitriytkachenko.nettyhttpserver;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -43,10 +42,9 @@ public class ConnectionInfo implements Serializable {
     public double getSpeed() {
         double connectionDuration = ChronoUnit.MILLIS.between(established, closed);
         connectionDuration /= 1000; // to seconds
-        /* Round to 3 decimal places. Sent and received bytes are divided separately to prevent overflow. */
-        double sentSpeed = Math.round((bytesSent / connectionDuration) * 1000) / 1000;
-        double receivedSpeed = Math.round((bytesReceived / connectionDuration) * 1000) / 1000;
-        return sentSpeed + receivedSpeed;
+
+        /* Round to 3 decimal places. */
+        return Math.round((((double)bytesSent + (double)bytesReceived) / connectionDuration) * 1000.0) / 1000.0;
     }
 
     public long getConnectionId() {
@@ -101,5 +99,35 @@ public class ConnectionInfo implements Serializable {
 
     public void setBytesSent(long bytesSent) {
         this.bytesSent = bytesSent;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ConnectionInfo that = (ConnectionInfo) o;
+
+        if (bytesReceived != that.bytesReceived) return false;
+        if (bytesSent != that.bytesSent) return false;
+        if (connectionId != that.connectionId) return false;
+        if (closed != null ? !closed.equals(that.closed) : that.closed != null) return false;
+        if (established != null ? !established.equals(that.established) : that.established != null) return false;
+        if (ip != null ? !ip.equals(that.ip) : that.ip != null) return false;
+        if (uris != null ? !uris.equals(that.uris) : that.uris != null) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = (int) (connectionId ^ (connectionId >>> 32));
+        result = 31 * result + (established != null ? established.hashCode() : 0);
+        result = 31 * result + (closed != null ? closed.hashCode() : 0);
+        result = 31 * result + (ip != null ? ip.hashCode() : 0);
+        result = 31 * result + (uris != null ? uris.hashCode() : 0);
+        result = 31 * result + (int) (bytesSent ^ (bytesSent >>> 32));
+        result = 31 * result + (int) (bytesReceived ^ (bytesReceived >>> 32));
+        return result;
     }
 }

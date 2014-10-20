@@ -5,6 +5,9 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.javatuples.Pair;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
@@ -18,18 +21,23 @@ import java.util.concurrent.ConcurrentHashMap;
 /* One pipeline per connection. Different pipelines can be run in different threads from worker thread pool.
 * Because of that, implementation of this class is thread-safe.
 * */
-public enum HttpServerStatistics implements Serializable {
-    INSTANCE;
+public class HttpServerStatistics implements Serializable {
+    private static final HttpServerStatistics INSTANCE = new HttpServerStatistics();
 
     private ConcurrentHashMap<String, Pair<Long, LocalDateTime>> ipRequests = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, Long> redirects = new ConcurrentHashMap<>();
     private List<ConnectionInfo> connections = Collections.synchronizedList(new ArrayList<>());
 
     /* Holds references to open channels (they remove themselves when they are closed). */
-    private DefaultChannelGroup channels  = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    private transient DefaultChannelGroup channels  = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+
+    private HttpServerStatistics() { }
+
+    public static HttpServerStatistics getInstance(){
+        return INSTANCE;
+    }
 
     public long getNumberOfRequests() {
-        System.err.println(ipRequests != null);
         return ipRequests != null && ipRequests.size() != 0 ? ipRequests.reduceValues(1, Pair::getValue0, Long::sum) : 0;
     }
 
@@ -113,11 +121,40 @@ public enum HttpServerStatistics implements Serializable {
             connections.remove(0);
         }
         connections.add(ci);
-        System.err.println("ConnectionInfo added.");
-        System.err.println("Connections: " + connections.size());
     }
 
     public List<ConnectionInfo> getConnections() {
         return connections;
+    }
+
+    public void serialize() {
+        try (FileOutputStream fileOut = new FileOutputStream("statistics.ser");
+             ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(this);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        HttpServerStatistics that = (HttpServerStatistics) o;
+
+        if (connections != null ? !connections.equals(that.connections) : that.connections != null) return false;
+        if (ipRequests != null ? !ipRequests.equals(that.ipRequests) : that.ipRequests != null) return false;
+        if (redirects != null ? !redirects.equals(that.redirects) : that.redirects != null) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = ipRequests != null ? ipRequests.hashCode() : 0;
+        result = 31 * result + (redirects != null ? redirects.hashCode() : 0);
+        result = 31 * result + (connections != null ? connections.hashCode() : 0);
+        return result;
     }
 }

@@ -15,7 +15,7 @@ public class HttpServerInitializer extends ChannelInitializer<SocketChannel> {
         ConnectionInfo ci = new ConnectionInfo();
         ci.setIp(HttpServerStatistics.getIpFromChannel(sc));
         ci.setEstablished(LocalDateTime.now());
-        HttpServerStatistics.INSTANCE.addConnectionInfo(ci);
+        HttpServerStatistics.getInstance().addConnectionInfo(ci);
         ChannelPipeline cp = sc.pipeline();
         cp.addLast(new ChannelTrafficCounter(0, ci));
         cp.addLast(new HttpRequestDecoder());

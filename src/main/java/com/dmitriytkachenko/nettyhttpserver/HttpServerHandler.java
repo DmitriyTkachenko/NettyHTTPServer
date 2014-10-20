@@ -1,16 +1,13 @@
 package com.dmitriytkachenko.nettyhttpserver;
 
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 
-import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +17,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     private HttpRequest request;
     /* Buffer that stores the response content */
     private final StringBuilder responseBuffer = new StringBuilder();
-    private final HttpServerStatistics statistics = HttpServerStatistics.INSTANCE;
+    private final HttpServerStatistics statistics = HttpServerStatistics.getInstance();
     private final ConnectionInfo ci;
 
     public HttpServerHandler(ConnectionInfo ci) {
@@ -84,7 +81,9 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     public void channelReadComplete(ChannelHandlerContext ctx) {
         ctx.flush();
         statistics.registerRequestFromIp(HttpServerStatistics.getIpFromChannel(ctx.channel()), LocalDateTime.now());
-        ci.addUri(request.getUri());
+        if (request != null) {
+            ci.addUri(request.getUri());
+        }
     }
 
     private void writeResponse(HttpObject currentObj, ChannelHandlerContext ctx) {
@@ -152,8 +151,10 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         htmlCreator.setTitle("Not Found");
         htmlCreator.setH1("404 Not Found");
         htmlCreator.addParagraph("The requested URL " + request.getUri() + " was not found on this server.");
+
         responseBuffer.setLength(0);
         responseBuffer.append(htmlCreator.getHtml());
+
         FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND,
                 Unpooled.copiedBuffer(responseBuffer.toString(), CharsetUtil.UTF_8));
         response.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/html; charset=utf-8");
@@ -164,6 +165,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         HtmlCreator htmlCreator = new HtmlCreator();
         htmlCreator.setTitle("Hello");
         htmlCreator.setH1("Hello World!");
+
         responseBuffer.setLength(0);
         responseBuffer.append(htmlCreator.getHtml());
 
@@ -174,28 +176,45 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         HtmlCreator htmlCreator = new HtmlCreator();
         htmlCreator.setTitle("Statistics");
         htmlCreator.setH1("Statistics");
-        htmlCreator.addParagraph("Total requests: " + statistics.getNumberOfRequests());
-        htmlCreator.addParagraph("Unique requests: " + statistics.getNumberOfUniqueRequests());
-        htmlCreator.addParagraph("Open connections: " + statistics.getConnectionCount());
+        htmlCreator.openParagraph().addBold("Total requests: ").addText("" + statistics.getNumberOfRequests()).closeParagraph();
+        htmlCreator.openParagraph().addBold("Unique requests: ").addText("" + statistics.getNumberOfUniqueRequests()).closeParagraph();
+        htmlCreator.openParagraph().addBold("Open connections: ").addText("" + statistics.getConnectionCount()).closeParagraph();
 
-        List<String> requestsTableHeaders = Arrays.asList("IP", "Requests", "Date and time of last request");
-        htmlCreator.addTableWithHeaders(requestsTableHeaders);
-        statistics.getIpRequestsAsStrings().forEach(htmlCreator::addRowToTable);
-        htmlCreator.endTable();
+        htmlCreator.addHorizontalLine();
+        htmlCreator.addH2("Requests");
+        if (statistics.getIpRequestsAsStrings().size() == 0) {
+            htmlCreator.addParagraph("No completed requests.");
+        } else {
+            List<String> requestsTableHeaders = Arrays.asList("IP", "Requests", "Date and time of last request");
+            htmlCreator.addTableWithHeaders(requestsTableHeaders);
+            statistics.getIpRequestsAsStrings().forEach(htmlCreator::addRowToTable);
+            htmlCreator.endTable();
+        }
 
-        List<String> redirectsTableHeaders = Arrays.asList("Destination URL", "Number of redirects");
-        htmlCreator.addTableWithHeaders(redirectsTableHeaders);
-        statistics.getRedirectsAsStrings().forEach(htmlCreator::addRowToTable);
-        htmlCreator.endTable();
+        htmlCreator.addHorizontalLine();
+        htmlCreator.addH2("Redirects");
+        if (statistics.getRedirectsAsStrings().size() == 0) {
+            htmlCreator.addParagraph("No redirects.");
+        } else {
+            List<String> redirectsTableHeaders = Arrays.asList("Destination URL", "Number of redirects");
+            htmlCreator.addTableWithHeaders(redirectsTableHeaders);
+            statistics.getRedirectsAsStrings().forEach(htmlCreator::addRowToTable);
+            htmlCreator.endTable();
+        }
 
+        htmlCreator.addHorizontalLine();
+        htmlCreator.addH2("Connections");
         List<String> connectionsTableHeaders = Arrays.asList("IP", "URIs", "Established", "Closed",
                 "Sent (bytes)", "Received (bytes)", "Speed (bytes/sec)");
         htmlCreator.addTableWithHeaders(connectionsTableHeaders);
         statistics.getConnectionsAsStrings().forEach(htmlCreator::addRowToTable);
         htmlCreator.endTable();
 
+        htmlCreator.openStyle().centerHeadings().styleTables().closeStyle();
+
         responseBuffer.setLength(0);
         responseBuffer.append(htmlCreator.getHtml());
+
         writeResponse(request, ctx);
     }
 

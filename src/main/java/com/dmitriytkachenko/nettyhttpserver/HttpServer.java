@@ -6,6 +6,10 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 public final class HttpServer {
     private int port;
 
@@ -24,6 +28,7 @@ public final class HttpServer {
             Channel ch = b.bind(port).sync().channel();
             ch.closeFuture().sync();
         } finally {
+            HttpServerStatistics.getInstance().serialize();
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }
