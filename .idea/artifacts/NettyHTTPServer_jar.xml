@@ -4,6 +4,8 @@
     <root id="archive" name="NettyHTTPServer.jar">
       <element id="module-output" name="NettyHTTPServer" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/io/netty/netty-all/4.0.23.Final/netty-all-4.0.23.Final.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/javatuples/javatuples/1.2/javatuples-1.2.jar" path-in-jar="/" />
+      <element id="file-copy" path="$PROJECT_DIR$/src/main/java/META-INF/MANIFEST.MF" />
     </root>
   </artifact>
 </component>

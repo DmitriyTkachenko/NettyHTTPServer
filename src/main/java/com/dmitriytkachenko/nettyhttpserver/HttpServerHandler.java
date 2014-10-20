@@ -80,6 +80,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
         ctx.flush();
+        /* Writing response to request is over. Record request in statistics */
         statistics.registerRequestFromIp(HttpServerStatistics.getIpFromChannel(ctx.channel()), LocalDateTime.now());
         if (request != null) {
             ci.addUri(request.getUri());
@@ -124,9 +125,9 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
                 send100Continue(ctx);
             }
 
+            // call method based on URI
             new UrlMapper(ctx).callAppropriateMethod();
         }
-
     }
 
     private void send100Continue(ChannelHandlerContext ctx) {
@@ -136,7 +137,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
 
     private void send501NotImplemented(ChannelHandlerContext ctx) {
         FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_IMPLEMENTED);
-        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE); // close connection
     }
 
     private void sendRedirect(ChannelHandlerContext ctx, String destinationUri) {
@@ -152,7 +153,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         htmlCreator.setH1("404 Not Found");
         htmlCreator.addParagraph("The requested URL " + request.getUri() + " was not found on this server.");
 
-        responseBuffer.setLength(0);
+        responseBuffer.setLength(0); // clear StringBuilder
         responseBuffer.append(htmlCreator.getHtml());
 
         FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND,

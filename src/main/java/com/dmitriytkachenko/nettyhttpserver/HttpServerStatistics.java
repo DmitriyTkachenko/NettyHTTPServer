@@ -117,6 +117,7 @@ public class HttpServerStatistics implements Serializable {
     }
 
     public synchronized void addConnectionInfo(ConnectionInfo ci) {
+        /* Store no more than 16 entries */
         if (connections.size() == 16) {
             connections.remove(0);
         }

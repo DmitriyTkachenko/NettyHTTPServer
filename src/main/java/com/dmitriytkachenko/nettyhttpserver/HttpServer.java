@@ -6,29 +6,24 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
 public final class HttpServer {
     private int port;
 
     public void run() throws Exception {
         // Configure the server.
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1); // 1 port - 1 thread
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-//                    .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new HttpServerInitializer());
 
             // Bind and start to accept incoming connections.
             Channel ch = b.bind(port).sync().channel();
             ch.closeFuture().sync();
         } finally {
-            HttpServerStatistics.getInstance().serialize();
+            HttpServerStatistics.getInstance().serialize(); // save statistics
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }

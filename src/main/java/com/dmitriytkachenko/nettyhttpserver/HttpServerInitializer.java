@@ -23,5 +23,4 @@ public class HttpServerInitializer extends ChannelInitializer<SocketChannel> {
         cp.addLast(new HttpContentCompressor());
         cp.addLast(new HttpServerHandler(ci));
     }
-
 }

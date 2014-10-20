@@ -30,6 +30,7 @@ public class ConnectionInfo implements Serializable {
         uris = new HashSet<>();
     }
 
+    /* Get comma-separated URIs */
     public String getUrisAsString() {
         StringBuilder sb = new StringBuilder();
         uris.forEach((uri) -> sb.append(uri).append(", "));
