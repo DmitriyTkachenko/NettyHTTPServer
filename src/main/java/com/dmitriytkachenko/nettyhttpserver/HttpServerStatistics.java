@@ -37,7 +37,7 @@ public class HttpServerStatistics implements Serializable {
         return INSTANCE;
     }
 
-    public long getNumberOfRequests() {
+    public synchronized long getNumberOfRequests() {
         return ipRequests != null && ipRequests.size() != 0 ? ipRequests.reduceValues(1, Pair::getValue0, Long::sum) : 0;
     }
 
