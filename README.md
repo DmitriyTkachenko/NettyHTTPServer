@@ -1,4 +1,4 @@
-# HTTP server written with Netty 4 (HamsterCoders test project)
+# HTTP server written with Netty 4
 
 ## Task
 
@@ -26,16 +26,6 @@ url, кол-во переадресация
 
  - в виде таблицы лог из 16 последних обработанных соединений, колонки
 src_ip, URI, timestamp,  sent_bytes, received_bytes, speed (bytes/sec)
-
-Все это (вместе с особенностями имплементации в текстовом виде) выложить на github, приложить к этому:
-
- - скриншоты как выглядят станицы /status в рабочем приложении
-
- - скриншот результата выполнения команды ab – c 100 – n 10000
-http://somedomain/status
-
- - еще один скриншот станицы /status, но уже после выполнение команды
-ab из предыдущего пункта
 
 ## Screenshots
 
